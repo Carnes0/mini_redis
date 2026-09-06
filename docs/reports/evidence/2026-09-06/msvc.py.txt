@@ -1,0 +1,10 @@
+import os
+import subprocess
+
+env = dict(os.environ)
+for command in [
+    ['cmake', '--fresh', '-S', '.', '-B', 'build-msvc-acceptance', '-G', 'Visual Studio 17 2022', '-A', 'x64'],
+    ['cmake', '--build', 'build-msvc-acceptance', '--config', 'Release', '--parallel', '4'],
+    ['ctest', '--test-dir', 'build-msvc-acceptance', '-C', 'Release', '--output-on-failure'],
+]:
+    subprocess.run(command, env=env, check=True)

@@ -1,0 +1,120 @@
+import concurrent.futures
+import pathlib
+import socket
+import subprocess
+import sys
+import time
+
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+EXE = ROOT / 'build-acceptance/mini_redis.exe'
+if len(sys.argv) > 1:
+    EXE = pathlib.Path(sys.argv[1]).resolve()
+PORT = 16381
+
+def frame(*args):
+    args = [a if isinstance(a, bytes) else str(a).encode() for a in args]
+    return b'*%d\r\n' % len(args) + b''.join(b'$%d\r\n' % len(a) + a + b'\r\n' for a in args)
+
+def connect():
+    return socket.create_connection(('127.0.0.1', PORT), timeout=5)
+
+def read(f):
+    line = f.readline()
+    assert line.endswith(b'\r\n'), repr(line)
+    if line.startswith(b'$'):
+        n = int(line[1:-2])
+        if n == -1:
+            return None
+        data = f.read(n)
+        assert len(data) == n and f.read(2) == b'\r\n'
+        return data
+    return line[:-2]
+
+def command(s, f, *args):
+    s.sendall(frame(*args))
+    return read(f)
+
+for args in [['--port', p] for p in ['0', '65536', '-1', 'abc', '6380x', '999999999999999999']] + [['--port'], ['--unknown']]:
+    result = subprocess.run([str(EXE), *args], capture_output=True, timeout=5)
+    assert result.returncode == 2, (args, result.returncode)
+print('PASS invalid CLI arguments: 8 cases', flush=True)
+
+log = open(ROOT / 'build-acceptance/network-server.log', 'w')
+server = subprocess.Popen([str(EXE), '--port', str(PORT)], stdout=log, stderr=log, creationflags=subprocess.CREATE_NO_WINDOW)
+try:
+    for _ in range(50):
+        assert server.poll() is None, 'server startup failed'
+        try:
+            with connect():
+                pass
+            break
+        except OSError:
+            time.sleep(.1)
+    time.sleep(.1)
+    with connect() as s, s.makefile('rb') as f:
+        request = frame('PING', 'fragmented')
+        for byte in request:
+            s.sendall(bytes([byte]))
+            time.sleep(.002)
+        assert read(f) == b'fragmented'
+        s.sendall(frame('SET', 'pipe', 'value') + frame('GET', 'pipe') + frame('DEL', 'pipe'))
+        assert [read(f), read(f), read(f)] == [b'+OK', b'value', b':1']
+        assert command(s, f, 'GET', 'absent') is None
+        assert command(s, f, 'SET', 'empty', b'') == b'+OK'
+        assert command(s, f, 'GET', 'empty') == b''
+        binary = bytes(range(256)) + '中文'.encode()
+        assert command(s, f, 'SET', 'binary', binary) == b'+OK'
+        assert command(s, f, 'GET', 'binary') == binary
+        for args in [('UNKNOWN',), ('SET', 'key'), ('GET',)]:
+            assert command(s, f, *args).startswith(b'-ERR')
+            assert command(s, f, 'PING') == b'+PONG'
+    print('PASS fragmentation, pipeline, missing/empty/binary values, error recovery', flush=True)
+    time.sleep(.1)
+    with connect() as s, s.makefile('rb') as f:
+        n = 1048576 - len(frame('SET', 'limit', b'')) - 6
+        payload = b'x' * n
+        request = frame('SET', 'limit', payload)
+        assert len(request) == 1048576, len(request)
+        s.sendall(request)
+        assert read(f) == b'+OK'
+        assert command(s, f, 'GET', 'limit') == payload
+    time.sleep(.1)
+    for request in [frame('SET', 'limit', payload + b'x'), b'*1\r\n$1048577\r\n', b'*0\r\n', b'*1\r\n$-1\r\n', b'!bad\r\n']:
+        with connect() as s, s.makefile('rb') as f:
+            s.sendall(request)
+            assert read(f).startswith(b'-ERR')
+            try:
+                assert f.read(1) == b''
+            except ConnectionResetError:
+                pass  # WinSock may reset a socket closed with unread request bytes.
+        time.sleep(.05)
+    print('PASS exact 1 MiB, oversized and malformed rejection/connection closure', flush=True)
+    holders = []
+    try:
+        for _ in range(4):
+            s = connect()
+            f = s.makefile('rb')
+            holders.append((s, f))
+            assert command(s, f, 'PING') == b'+PONG'
+        with connect() as s, s.makefile('rb') as f:
+            assert read(f).startswith(b'-BUSY')
+            assert f.read(1) == b''
+    finally:
+        for s, f in holders:
+            f.close()
+            s.close()
+    time.sleep(.2)
+    def worker(i):
+        with connect() as s, s.makefile('rb') as f:
+            for j in range(100):
+                key, value = f'worker-{i}', f'value-{j}'
+                assert command(s, f, 'SET', key, value) == b'+OK'
+                assert command(s, f, 'GET', key) == value.encode()
+    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
+        list(pool.map(worker, range(4)))
+    print('PASS 4-client capacity, BUSY fifth client, slot recovery, 800 concurrent commands', flush=True)
+    assert server.poll() is None
+finally:
+    server.terminate()
+    server.wait(timeout=5)
+    log.close()

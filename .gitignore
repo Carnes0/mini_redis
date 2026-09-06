@@ -1,0 +1,8 @@
+/build*/
+/*.exe
+/.superpowers/
+/.vs/
+/.vscode/
+*.obj
+*.pdb
+

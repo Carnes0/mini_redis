@@ -1,0 +1,63 @@
+Start testing: Sep 06 12:06 中国标准时间
+----------------------------------------------------------
+1/4 Testing: protocol_test
+1/4 Test: protocol_test
+Command: "C:/Users/a/Desktop/mini_redis/build-msvc-acceptance/Release/protocol_test.exe"
+Directory: C:/Users/a/Desktop/mini_redis/build-msvc-acceptance
+"protocol_test" start time: Sep 06 12:06 中国标准时间
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.14 sec
+----------------------------------------------------------
+Test Passed.
+"protocol_test" end time: Sep 06 12:06 中国标准时间
+"protocol_test" time elapsed: 00:00:00
+----------------------------------------------------------
+
+2/4 Testing: storage_test
+2/4 Test: storage_test
+Command: "C:/Users/a/Desktop/mini_redis/build-msvc-acceptance/Release/storage_test.exe"
+Directory: C:/Users/a/Desktop/mini_redis/build-msvc-acceptance
+"storage_test" start time: Sep 06 12:06 中国标准时间
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.07 sec
+----------------------------------------------------------
+Test Passed.
+"storage_test" end time: Sep 06 12:06 中国标准时间
+"storage_test" time elapsed: 00:00:00
+----------------------------------------------------------
+
+3/4 Testing: commands_test
+3/4 Test: commands_test
+Command: "C:/Users/a/Desktop/mini_redis/build-msvc-acceptance/Release/commands_test.exe"
+Directory: C:/Users/a/Desktop/mini_redis/build-msvc-acceptance
+"commands_test" start time: Sep 06 12:06 中国标准时间
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.06 sec
+----------------------------------------------------------
+Test Passed.
+"commands_test" end time: Sep 06 12:06 中国标准时间
+"commands_test" time elapsed: 00:00:00
+----------------------------------------------------------
+
+4/4 Testing: thread_pool_test
+4/4 Test: thread_pool_test
+Command: "C:/Users/a/Desktop/mini_redis/build-msvc-acceptance/Release/thread_pool_test.exe"
+Directory: C:/Users/a/Desktop/mini_redis/build-msvc-acceptance
+"thread_pool_test" start time: Sep 06 12:06 中国标准时间
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.06 sec
+----------------------------------------------------------
+Test Passed.
+"thread_pool_test" end time: Sep 06 12:06 中国标准时间
+"thread_pool_test" time elapsed: 00:00:00
+----------------------------------------------------------
+
+End testing: Sep 06 12:06 中国标准时间
